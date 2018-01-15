@@ -1,14 +1,15 @@
-let fluidType = 'TYPE I';
-let precipitationArray = ['FFoIC', 'Snow_VL', 'Snow_L', 'Snow_M', 'Snow_H', 'freezing_drizzle', 'freezing_rain', 'rain_csw'];
+const fluidType = 'TYPE I';
+const precipitationArray = ['FFoIC', 'Snow_VL', 'Snow_L', 'Snow_M', 'Snow_H', 'freezing_drizzle', 'freezing_rain', 'rain_csw'];
 const xah_range = ((min, max , step = 1) => {
     const arr = [];
     const totalSteps = Math.floor((max - min)/step);
-    for (let ii = 0; ii <= totalSteps; ii++ ) { arr.push(ii * step + min) }
+    for (let i = 0; i <= totalSteps; i++ ) { 
+        arr.push((i * step) + min) 
+    }
     return arr;
 } );
-
 //here will be request to the database
-let tempdb = [
+const tempdb = [
     {
         temp: xah_range(32,100),
         fluid: 100,
@@ -177,31 +178,17 @@ let tempdb = [
         rain_csw: [0, 0],
         Snow_H: [0, 0]
     }
-
 ]
-function hoCalculation(ftype, precip, temp) {
-    checkTemp(temp) 
-        .then(resolve => filterPrep(resolve, precip, temp))
-        .then(resolve => takeBest(resolve, ftype))
-        .then(resolve => console.log(resolve))
-        .catch(err => console.log(err));  
-}
-function checkTemp(temp) {
-    let filteredByTemp = tempdb.filter((item) => !(item['temp'].indexOf(temp) === -1));
-    return new Promise((resolve, reject) => {
-        return resolve(filteredByTemp);
-    }) 
-}
-function filterPrep(array, precipType, temperature) {
-    return array.map((item) => {
-        let {temp, fluid} = item;
-        const value = item[precipType];
-        let newItem = {
-            temp,
-            fluid,
+function hoCalculation(ftype, precip, temperature) {
+    let filteredByTemp = tempdb.filter((item) => !(item['temp'].indexOf(temperature) === -1)); 
+    let filtererByPrec = filteredByTemp.map((item) => {
+        const {fluid} = item;
+        const value = item[precip];
+        const newItem = {
+            concentration: fluid,
             value
         }
-        if(temperature >= 32 && precipType === 'rain_csw') {
+        if(temperature >= 32 && precip === 'rain_csw') {
             newItem.message = 'If Cold soaked wings';
         }
         if(value[0] === 0 && value[0] === 0) {
@@ -209,42 +196,18 @@ function filterPrep(array, precipType, temperature) {
         }
         return newItem;
     });
+    return Object.assign({},{ftype}, filtererByPrec.sort(comparator)[0])
 }
-function takeBest(array, ftype) {
-    array.sort(comparator);
-    const { 
-        fluid: concentration,
-        value: holdovertime,
-        message,
-        caution 
-    } = array[0];
-    
-    let object = {
-        ftype,
-        concentration,
-        holdovertime,
-        message,
-        caution
-    }
-    //not sure it is necessary keep undefined fields
-    if (!object.caution) delete object.caution;
-    if (!object.message) delete object.message;
-    return object;
 
-    //return JSON.stringify(object);
-}
 function comparator(a, b) {
     if (a.value[0] > b.value[0]) {
         return -1;
-        } else if (a.value[0] < b.value[0]) {
-            return 1;
-        } else if (a.value[1] > b.value[1]){
-            return -1;
-        } else if (a.value[1] < b.value[1]) {
-            return 1;
-        }
+    }
+    if (a.value[0] < b.value[0]) {
+        return 1;
+    }
+    return a.value[1] > b.value[1] ? -1: 1;
 }
-
-hoCalculation(fluidType, precipitationArray[0], 33, tempdb);
+console.log(hoCalculation(fluidType, precipitationArray[0], 33));
 
 
